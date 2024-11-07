@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Ask Emily - AI Trip Planner</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #response { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Ask Emily</h1>
+    <p>Ask questions about your trip, such as routes, technicians, or Roamer Rewards.</p>
+    <input type="text" id="query" placeholder="Ask Emily..." style="width: 80%;">
+    <button onclick="askEmily()">Submit</button>
+    <div id="response"></div>
+
+    <script>
+        async function askEmily() {
+            const query = document.getElementById("query").value;
+            const response = await fetch("/ask_emily", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query })
+            });
+            const data = await response.json();
+            document.getElementById("response").innerText = data.response;
+        }
+    </script>
+</body>
+</html>
