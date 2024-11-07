@@ -1,0 +1,57 @@
+# app.py
+from flask import Flask, render_template, request, jsonify
+from langchain import PromptTemplate, LLMChain
+from langchain.llms import OpenAI
+from utils.data_fetcher import fetch_campground_data, fetch_fuel_stations
+from utils.routing import get_rv_route
+from utils.technician_finder import get_rv_technicians
+from utils.rewards_display import fetch_rewards_data
+from config import API_KEYS
+
+app = Flask(__name__)
+llm = OpenAI(api_key=API_KEYS["openai"])
+
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+@app.route("/ask_emily", methods=["POST"])
+def ask_emily():
+    user_query = request.json.get("query")
+    location = request.json.get("location")
+    action = classify_action(user_query)
+
+    if action == "trip_planning":
+        response_data = fetch_campground_data(location)
+    elif action == "route_planning":
+        rv_specs = request.json.get("rv_specs")
+        response_data = get_rv_route(location, request.json.get("destination"), rv_specs)
+    elif action == "find_technician":
+        response_data = get_rv_technicians(location)
+    elif action == "fetch_rewards":
+        response_data = fetch_rewards_data()
+
+    response = generate_response(user_query, response_data)
+    return jsonify({"response": response})
+
+def classify_action(user_query):
+    if "route" in user_query:
+        return "route_planning"
+    elif "technician" in user_query:
+        return "find_technician"
+    elif "rewards" in user_query:
+        return "fetch_rewards"
+    else:
+        return "trip_planning"
+
+def generate_response(query, data):
+    template = PromptTemplate(
+        input_variables=["query", "data"],
+        template="Based on user request '{query}', generate response for data: {data}"
+    )
+    llm_chain = LLMChain(llm=llm, prompt=template)
+    response = llm_chain.run(query=query, data=data)
+    return response
+
+if __name__ == "__main__":
+    app.run(debug=True)
